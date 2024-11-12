@@ -1,0 +1,456 @@
+Project implementation process from scratch:
+--------------------------------------------
+
+step 1: Install Node.js (install standard version like 11.2.0)(open cmd check like  node -v)if it will show 11.2.0 then ok other wise add in environment variables)
+-->node:C:\Program Files\nodejs\ --> again check in cmd
+step 2: Install visual studio 
+step 3: Install visual studio code 
+Step 4: Install SQL Server
+step 5: In Visual Studio --> create project-->search and choose class library-->name it as Entity layer---> .net core 6 version--> create 
+step 6: create folder called Models--->(TaskDetails.cs, User.cs)---->create one more folder called Interfaces-->create interfaces(ITaskRepo.cs,IUserRepo.cs)
+Interface Example:
+------------------
+ public  interface ITaskRepo
+    {
+        TaskDetails AddTask(TaskDetails taskDetails);
+        List<TaskDetails> GetAllTasks();
+
+        object UpdateTaskDetails(TaskDetails taskDetails);
+
+        object DeleteTaskDetailsById(int id);
+        List<TaskDetails> GetTasksByUserId(int userId);
+
+        bool DeleteTaskByUserIdAndTaskId(int userId, int taskId);
+    }
+Models Example:
+-----------------
+ public class TaskDetails
+    {
+        [Key]
+        public int taskID {  get; set; }
+
+        [Required(ErrorMessage = "TaskName is required")]
+        public string taskName { get; set; }
+
+        [Required(ErrorMessage = "Description is required")]
+        public string taskDescription { get; set; }
+
+        [Required(ErrorMessage = "TaskDate is required")]
+        public DateTime taskDate { get; set; }
+
+        [Required]
+        [DefaultValue("Not Completed")]
+        public string status { get; set; } = "Not Completed";
+
+        public int userId { get; set; }
+    }
+
+step 7:In visual studio already created one project as entity layer right, in that right click add project , search like class Library choose-->nameit as DataAccessLayer
+-->In DataAccessLayer right click on that -->nauget package manager--browse-->
+1.Microsoft.EntityFrameworkCore.SqlServer(6.0 version install)
+2.Microsoft.EntityFrameworkCore.Tools(6.0 version install)
+3.Microsoft.AspNetCore.Mvc(6.0 version)
+4.Microsoft.AspNetCore.Cors(6.0 version)
+5.System.ComponentModel.Annotations(6.0 version)
+6.Microsoft.AspNetCore.Mvc.NewtonsoftJson(6.0 version)
+7.Swashbuckle.AspNetCore(6.0 version)
+
+step 8: create folder called Data-->add class (TaskDbContext.cs)--->create one more folder called Repositories--> add classes(TaskRepo.cs,UserRepo.cs)
+
+Repositories classes example:
+-----------------------------
+   public class TaskRepo : ITaskRepo
+    {
+        TaskDbContext _dbContext;
+
+        public TaskRepo(TaskDbContext taskDb)
+        {
+            _dbContext = taskDb;
+        }
+
+        public TaskDetails AddTask(TaskDetails taskDetails)
+        {
+            _dbContext.TaskDetails.Add(taskDetails);
+            _dbContext.SaveChanges();
+            return taskDetails;
+        }
+
+        public object DeleteTaskDetailsById(int id)
+        {
+            var obj = _dbContext.TaskDetails.Find(id);
+            if(obj != null)
+            {
+                _dbContext.TaskDetails.Remove(obj);
+                _dbContext.SaveChanges();
+            }
+            return "Task Deleted Successfully";
+        }
+
+        public bool DeleteTaskByUserIdAndTaskId(int userId, int taskId)
+        {
+            var task = _dbContext.TaskDetails.FirstOrDefault(t => t.taskID == taskId && t.userId == userId);
+            if (task != null)
+            {
+                _dbContext.TaskDetails.Remove(task);
+                _dbContext.SaveChanges();
+                return true;
+            }
+            return false;
+        }
+
+        public List<TaskDetails> GetAllTasks()
+        {
+            return _dbContext.TaskDetails.ToList();
+        }
+
+        public object UpdateTaskDetails(TaskDetails taskDetails)
+        {
+            _dbContext.TaskDetails.Update(taskDetails);
+            _dbContext.SaveChanges();
+            return taskDetails;
+        }
+
+        public List<TaskDetails> GetTasksByUserId(int userId)
+        {
+             return _dbContext.TaskDetails.Where(t => t.userId == userId).ToList();
+        }
+    }
+TaskDbContext.cs example:
+-----------------------------
+   public class TaskDbContext : DbContext
+    {
+        public TaskDbContext(DbContextOptions<TaskDbContext> options) : base(options) { }
+
+        public DbSet<Users> Users { get; set; }
+        public DbSet<TaskDetails> TaskDetails { get; set; }
+    }
+
+step 9:on top of solutions, right click on that add project--> search class library choose-->name it as business layer-->create
+step 10: create folder called services-->create classes (UserService.cs,TaskService.cs)
+TaskService.cs Example code:
+------------------------------
+ public class TaskService
+    {
+        ITaskRepo _taskRepo;
+
+        public TaskService(ITaskRepo taskRepo)
+        {
+            _taskRepo = taskRepo;
+        }
+
+        public TaskDetails AddTask(TaskDetails taskDetails)
+        {
+            return _taskRepo.AddTask(taskDetails);
+        }
+        public  List<TaskDetails> GetAllTasks()
+        {
+            return _taskRepo.GetAllTasks();
+
+        }
+
+        public object UpdateTaskDetails(TaskDetails taskDetails)
+        {
+            return _taskRepo.UpdateTaskDetails(taskDetails);
+        }
+
+        public object DeleteTaskDetailsById(int id)
+        {
+            return _taskRepo.DeleteTaskDetailsById(id);
+
+        }
+
+        public bool DeleteTaskByUserIdAndTaskId(int userId, int taskId)
+        {
+            return _taskRepo.DeleteTaskByUserIdAndTaskId(userId, taskId);
+        }
+
+        public List<TaskDetails> GetTasksByUserId(int userId)
+        {
+            return _taskRepo.GetTasksByUserId(userId);
+        }
+
+         
+    }
+step 11: on top solution, right click on that add project --> search .net core web API, choose that -->name it main project name (TaskManager)this is API Layer-->create
+step 12: create folder called controller-->add controllers(TaskController.cs, UserController.cs)
+TaskController.cs Example Code:
+----------------------------------
+ [Route("api/[controller]")]
+    [ApiController]
+    public class TaskController : ControllerBase
+    {
+        private readonly TaskService _taskService;
+
+        public TaskController(TaskService taskService)
+        {
+            _taskService = taskService;
+        }
+
+        [Authorize]
+        [Route("AddTask")]
+        [HttpPost]
+        public IActionResult AddTask(TaskDetails taskdetails)
+        {
+            var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "userId")?.Value;
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized("User ID not found in token.");
+            }
+
+            var userId = int.Parse(userIdClaim);
+            taskdetails.userId = userId;
+            var result = _taskService.AddTask(taskdetails);
+            return Ok(result);
+        }
+
+        [Route("GetAllTasks")]
+        [HttpGet]
+        public IActionResult GetAllTasks()
+        {
+            var result = _taskService.GetAllTasks();
+            return Ok(result);
+        }
+
+        [Authorize]
+        [Route("GetUserTasks")]
+        [HttpGet]
+        public IActionResult GetUserTasks()
+        {
+            foreach (var claim in User.Claims)
+            {
+                Console.WriteLine($"Claim Type: {claim.Type}, Claim Value: {claim.Value}");
+            }
+
+            // Retrieve user ID from JWT token
+            var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "userId")?.Value;
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized("User ID not found in token.");
+            }
+
+            var userId = int.Parse(userIdClaim);
+            var result = _taskService.GetTasksByUserId(userId);
+            return Ok(result);
+        }
+
+
+        [Authorize]
+        [Route("UpdateTaskDetails")]
+        [HttpPut]
+        public IActionResult UpdateTaskDetails(TaskDetails taskdetails)
+        {
+            var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "userId")?.Value;
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized("User ID not found in token.");
+            }
+
+            var userId = int.Parse(userIdClaim);
+            taskdetails.userId = userId;
+            var result = _taskService.UpdateTaskDetails(taskdetails);
+            return Ok(result);
+        }
+
+       
+        [Route("DeleteTaskDetailsById")]
+        [HttpDelete]
+        public IActionResult DeleteTaskDetailsById(int taskId)
+        {
+            var result = _taskService.DeleteTaskDetailsById(taskId);
+            return Ok(result);
+        }
+
+      
+        [Authorize]
+        [Route("DeleteTaskByUserIdAndTaskId")]
+        [HttpDelete]
+        public IActionResult DeleteTaskByUserIdAndTaskId(int userId, int taskId)
+        {
+            var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "userId")?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || int.Parse(userIdClaim) != userId)
+            {
+                return Unauthorized("User ID not found in token or does not match.");
+            }
+
+            // Check if the task belongs to the user
+            var result = _taskService.DeleteTaskByUserIdAndTaskId(userId, taskId);
+         
+            return result ? Ok(new { message = "Task Deleted Successfully" }) : NotFound(new { message = "Task Not Found or Unauthorized Access" });
+
+        }
+
+    }
+step 12: In program.cs add middle wares , whatever required for our project and add dependcies also for created services and repos
+
+Dependencies examles:
+-----------------------
+services and repos example code:
+-------------------------------------
+builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<IUserRepo, UserRepo>();
+builder.Services.AddScoped<TaskService>();
+builder.Services.AddScoped<ITaskRepo, TaskRepo>();
+
+Middle ware Example Code:
+----------------------------
+builder.Services.AddDbContext<TaskDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
+                         b => b.MigrationsAssembly("DataAccessLayer")));
+
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+
+    // Configure CORS to allow any origin, method, and header for development purposes
+    app.UseCors(x => x.AllowAnyMethod()
+                      .AllowAnyHeader()
+                      .SetIsOriginAllowed(origin => true)
+                      .AllowCredentials());
+    app.UseCors("AllowLocalNetwork");
+}
+
+step 13: In AppSettings.Json add connection strings
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=.;Database=TaskManagerDb;Trusted_Connection=True;"
+  }
+
+step 14:after creation of all layers -> add project reference between projects-->first right click on API layer --> add project refernce -->select BusinessLayer
+next BusinessLayer --> right click on BusinessLayer --> Add project reference --> select DataAccesslayer
+next DataAccesslayer --> right click on DataAccesslayer--> add project Refernce --> select EntityLayer
+
+step 15:--> save all layers once and build the project-->if no errors-->tools-->nauget package manager-->package manager console-->
+--->Add-Migration migrationname(FirstMigration like)
+--->After successful migration update database-->Update-Database
+after all these check swagger endpoints and SQL Tables created or not
+
+step 16:For visual studio code ->open file Explorer->go to path->c drive->users->admin or name folder-->source-->repos-->create folder(TaskManagementUI)
+--> open visual studio code -> open folder--> choose that TaskManagementUI folder-->terminal-->new terminal--->perform some commands
+1.npm install -g @angular/cli@10
+2.npm i @ng-bootstrap/ng-bootstrap
+3.npm i rxjs
+4.npm i bootstrap@4.6.0
+5.npm i sweetalert2
+6.npm i @fortawesome/fontawesome --free
+7.npm i
+8.ng new projname --no-standalone
+9.ng g c components/componentname
+10.ng g s services/servicename
+11.ng g class models/modelname --type=model
+step 17: create necessary components(UserComponent,TaskComponent)
+
+Example code:
+-----------------
+export class HomeComponent implements OnInit {
+
+  @ViewChild('createtaskmodal')createtaskmodal!:ElementRef;
+  @ViewChild('edittaskmodal')edittaskmodal!:ElementRef;
+
+  email: string | null = '';
+  taskList : Task[] = [];
+  modaltaskList : Task = {
+    taskID:0,
+    taskName :"", 
+    taskDescription: "",
+    status  :"Not Completed"
+  };
+  minDate: Date = new Date();
+  isPastDate: boolean = false; 
+
+  selectedTask : Task = new Task; 
+
+  filteredTaskList: Task[] = [];
+  searchQuery: string = '';
+
+  errorMessage : string = "";
+
+  validateTaskId = false;
+  validateTaskName = false;
+  validateTaskDescription = false;
+  validateTaskDate = false;
+  validateTaskStatus = false;
+
+  updateValidateTaskId = false;
+  updateValidateTaskName = false;
+  updateValidateTaskDescription = false;
+  updateValidateTaskDate = false;
+  updateValidateTaskStatus = false;
+
+
+  constructor(private homeservice:HomeService,private router: Router) { }
+
+  ngOnInit(): void {
+    this.email = window.localStorage.getItem("email");
+    // this.getTaskList();
+    this.resetForm();
+    this.loadTasks();
+  }
+
+  loadTasks(): void {
+    const token = localStorage.getItem('token');
+
+    if (token) {
+      // Fetch tasks for the logged-in user
+      this.homeservice.getUserTasks( token).subscribe(
+        (tasks) => {
+          this.taskList = tasks; // Store fetched tasks
+          this.filteredTaskList = this.taskList;
+        },
+        (error) => {
+          console.error('Error fetching tasks', error);
+          // Optionally handle navigation if not authorized
+          if (error.status === 401) {
+            this.router.navigate(['/login']); // Redirect to login if token is invalid
+          }
+        }
+      );
+    } else {
+      console.error('No userId or token found in local storage');
+      this.router.navigate(['/login']); // Redirect to login if no userId or token
+    }
+  }
+
+
+step 18: In app.routing.module.ts-->add component path for redirection
+const routes: Routes = [
+  {path: '', redirectTo: 'welcome', pathMatch: 'full'},
+  {path:'welcome',component:WelcomeComponent},
+];
+
+step 19: In models folder-->create necessary models(usermodel,Taskmodel)
+Example code:
+--------------
+export class Task {
+    taskID?: number
+    taskName? :string 
+    taskDescription?: string
+    taskDate?: Date
+    status  = "Not Completed";
+
+}
+
+step 20: create services (user,task)
+Example code:
+--------------
+export class HomeService {
+
+  baseUrl = "http://localhost:7187/api/Task/";
+
+  constructor(private http: HttpClient) {
+    
+   }
+   addTask(data: any): Observable<any> {
+    // Retrieve the token from local storage or your auth service
+    const token = localStorage.getItem('token'); // Change this to your token retrieval method
+
+    // Set the authorization header
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json' // Ensure the content type is set if you're sending JSON
+    });
+
+    return this.http.post(this.baseUrl + 'AddTask', data, { headers });
+  }
+
+step 21:ng serve (for run the project)
