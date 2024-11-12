@@ -1,0 +1,1 @@
+# .Netcore-and-angular-Project-Implementation-Process
