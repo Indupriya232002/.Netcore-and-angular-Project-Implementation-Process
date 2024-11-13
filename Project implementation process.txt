@@ -1,7 +1,8 @@
 Project implementation process from scratch:
 --------------------------------------------
 
-step 1: Install Node.js (install standard version like 11.2.0)(open cmd check like  node -v)if it will show 11.2.0 then ok other wise add in environment variables)
+step 1: Install Node.js (install standard version like 12.11.0)(open cmd check like  node -v)if it will show 12.11.0 then ok other wise add in environment variables)
+https://nodejs.org/dist/v12.11.0/node-v12.11.0-x64.msi
 -->node:C:\Program Files\nodejs\ --> again check in cmd
 step 2: Install visual studio 
 step 3: Install visual studio code 
@@ -326,6 +327,8 @@ step 15:--> save all layers once and build the project-->if no errors-->tools-->
 after all these check swagger endpoints and SQL Tables created or not
 
 step 16:For visual studio code ->open file Explorer->go to path->c drive->users->admin or name folder-->source-->repos-->create folder(TaskManagementUI)
+--> open powershell as run as adminstartor and perform this command 
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 --> open visual studio code -> open folder--> choose that TaskManagementUI folder-->terminal-->new terminal--->perform some commands
 1.npm install -g @angular/cli@10
 2.npm i @ng-bootstrap/ng-bootstrap
