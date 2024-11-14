@@ -1,0 +1,46 @@
+1.how to clone Repository in visual studio Code?
+a.  git --version
+    If not installed, download and install it from the official Git website.
+
+b. Get the Repository URL
+   Go to the GitHub repository you want to clone.
+   Click the Code button and copy the URL. This can be an HTTPS or SSH URL.
+
+c. cd /path/to/your/directory
+
+d. git clone https://github.com/username/repository-name.git(copied GitHub clone url)
+
+e. cd repository-name
+
+ANOTHER WAY TO CLONE MANUALLY for FRONTEND:
+--------------------------------------------
+copy the GitHub project url --> open visual studio code-->file-->clone repository-->paste the url--> enter-->check the code is in main or master--> later where the code will present change
+to that branch--> still not able to see code --> click on pull or commit that's solve 
+Install Node packages(be careful at installation time check versions and install) and run
+
+ANOTHER WAY TO CLONE MANUALLY for BACKEND:
+---------------------------------------------
+open visual studio --> clone project-->paste the GitHub project url-->rebuild the solution--> run 
+
+
+
+2. How to push code to GitHub?
+
+-->In filemanager go to the projectpath exact folder in path enter cmd
+a. git --version
+b. git config --global user.name "Your Name"
+c. git config --global user.email "your.email@example.com"
+d. git config --global --list(optional maxno need)
+e. Open Your Project in Visual Studio Code (this path also optional becoz already at starting we went to exact path in cmd)
+   Open Visual Studio Code and navigate to your project folder.
+f. Open Terminal in VS Code (or use Command Prompt/PowerShell) and run
+   git init
+g. git add .
+   Stage all files for commit
+h. Commit your staged changes with a message
+   git commit -m "Initial commit"
+I. git remote add origin https://github.com/username/repository-name.git
+j. git push origin main
+
+
+----> the above process is for both front end and backend 
